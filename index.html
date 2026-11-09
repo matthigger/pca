@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PCA, visually</title>
+  <meta name="description" content="Project a cloud onto a line and find
+    the direction of most variance; then eigenfaces: rebuild Guess Who,
+    Olivetti, emoji and cat faces from their top k principal
+    components.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='16' cy='16' rx='14' ry='6' transform='rotate(-30 16 16)' fill='%237c3aed' fill-opacity='.18'/%3E%3Cpath d='M3 23.5 L29 8.5' stroke='%237c3aed' stroke-width='2.6'/%3E%3Ccircle cx='9' cy='18' r='2.6' fill='%231c2230'/%3E%3Ccircle cx='22' cy='13' r='2.6' fill='%231c2230'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>PCA, visually</h1>
+    <p class="sub">Keep the direction where the data varies most; lose the
+      least by throwing the rest away.</p>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-mode="proj">Projection onto a
+        line</button>
+      <button class="tab" role="tab" data-mode="faces">Eigenfaces</button>
+    </nav>
+  </header>
+
+  <section class="intro card">
+    <div data-show="proj">
+      <h2>Which line keeps the most?</h2>
+      <p class="goal"><b>Goal:</b> describe each 2-d sample by one number,
+        its score <i>c</i> = <b>w</b><sup>T</sup>(<b>x</b> &minus;
+        <b>x&#772;</b>) along a unit direction <b>w</b>, and rebuild it as
+        <b>x&#770;</b> = <b>x&#772;</b> + <i>c</i><b>w</b>, losing as little
+        as possible.</p>
+      <p class="goal approach"><b>Approach:</b> the error <b>e</b> =
+        <b>x</b> &minus; <b>x&#770;</b> is at a right angle to <b>w</b>, so
+        Pythagoras splits every sample's spread into a kept part and a lost
+        part. Their sum is fixed by the data, so the least error is the
+        most variance (Pearson 1901; Hotelling 1933):</p>
+      <div class="formula">
+        <span class="frac"><span>1</span><span><i>n</i></span></span>&sum;
+        <i>c<sub>i</sub></i><sup>2</sup> +
+        <span class="frac"><span>1</span><span><i>n</i></span></span>&sum;
+        ‖<b>e</b><sub><i>i</i></sub>‖<sup>2</sup> = tr <i>S</i>
+        <span class="implies">&rArr;</span>
+        max<sub><b>w</b></sub> <b>w</b><sup>T</sup><i>S</i><b>w</b>
+        &nbsp;subject to&nbsp; <b>w</b><sup>T</sup><b>w</b> = 1
+      </div>
+      <p class="muted">Here <i>S</i> = cov(<b>x</b>) with 1/<i>n</i>, so
+        the kept variance (1/<i>n</i>)&sum; <i>c<sub>i</sub></i><sup>2</sup>
+        is exactly <b>w</b><sup>T</sup><i>S</i><b>w</b>. Edit <i>S</i>
+        directly or through its eigenvalues and eigenvectors: the samples
+        reshape to have exactly that covariance.</p>
+    </div>
+
+    <div data-show="faces">
+      <h2>Eigenfaces: an image is a long vector</h2>
+      <p class="goal"><b>Goal:</b> store each image with <i>k</i> numbers
+        instead of its <i>d</i> pixel values (<i>d</i> = 64 &middot; 64 =
+        4096 for an Olivetti face, three times that in color), and rebuild
+        it.</p>
+      <p class="goal approach"><b>Approach:</b> the same PCA as the line,
+        in <i>d</i> dimensions. The principal directions
+        <b>w</b><sub>1</sub>, <b>w</b><sub>2</sub>, &hellip; are unit
+        eigenvectors of <i>S</i> (<i>d</i> &times; <i>d</i>), sorted by
+        eigenvalue <i>&lambda;</i><sub>1</sub> &ge;
+        <i>&lambda;</i><sub>2</sub> &ge; &hellip;; drawn as pictures they
+        are the eigenfaces (Sirovich &amp; Kirby 1987; Turk &amp; Pentland
+        1991).</p>
+      <div class="formula">
+        <b>x&#770;</b> = <b>x&#772;</b> + <i>c</i><sub>1</sub><b>w</b><sub>1</sub>
+        + &hellip; + <i>c<sub>k</sub></i><b>w</b><sub><i>k</i></sub>,
+        &nbsp; <i>c<sub>j</sub></i> =
+        <b>w</b><sub><i>j</i></sub><sup>T</sup>(<b>x</b> &minus;
+        <b>x&#772;</b>)
+        <span class="implies">&rArr;</span>
+        kept = <span class="frac"><span><i>&lambda;</i><sub>1</sub> +
+        &hellip; + <i>&lambda;<sub>k</sub></i></span><span><i>&lambda;</i><sub>1</sub>
+        + &hellip; + <i>&lambda;<sub>d</sub></i></span></span>
+      </div>
+      <p class="muted">The variance along <b>w</b><sub><i>j</i></sub> is
+        <i>&lambda;<sub>j</sub></i>, so the kept fraction is a running sum
+        of eigenvalues. PCA runs in your browser on the pixels in [0, 1];
+        <i>&lambda;<sub>j</sub></i> match sklearn's
+        <code>explained_variance_</code> (1/(<i>n</i> &minus; 1)).</p>
+    </div>
+
+    <div>
+      <h3>Try this</h3>
+      <ul class="try" data-show="proj">
+        <li>Drag <b>w</b> around and watch the variance-by-direction
+          curve. Where is it highest, and how high?
+          <details class="answer"><summary>Answer</summary>At
+            <b>w</b> = <b>v</b><sub>1</sub>, the eigenvector of the larger
+            eigenvalue, and the peak height is <i>&lambda;</i><sub>1</sub>.
+            The lowest point is <b>v</b><sub>2</sub> with height
+            <i>&lambda;</i><sub>2</sub>, a right angle away. Lagrange gives
+            the same thing: &nabla; <b>w</b><sup>T</sup><i>S</i><b>w</b> =
+            <i>&lambda;</i> &nabla; <b>w</b><sup>T</sup><b>w</b> is
+            <i>S</i><b>w</b> = <i>&lambda;</i><b>w</b>.</details>
+        </li>
+        <li>Tick <em>show S w</em>. For which <b>w</b> does
+          <i>S</i><b>w</b> point the same way as <b>w</b>?
+          <details class="answer"><summary>Answer</summary>Only along
+            the two eigenvectors (and their negatives): that is the
+            definition <i>S</i><b>v</b> = <i>&lambda;</i><b>v</b>. Its
+            length there is <i>&lambda;</i>, the variance along that
+            line.</details>
+        </li>
+        <li>Set <i>S</i> to the lesson's [[5, 2], [2, 2]]. How much
+          variance does the best line keep?
+          <details class="answer"><summary>Answer</summary><i>&lambda;</i>
+            = 6 and 1, so the best line keeps 6 of tr <i>S</i> = 7, about
+            86%, along <b>v</b><sub>1</sub> = [2, 1]/&radic;5.</details>
+        </li>
+        <li>Make <i>&lambda;</i><sub>1</sub> = <i>&lambda;</i><sub>2</sub>.
+          Which line is best now?
+          <details class="answer"><summary>Answer</summary>All of them:
+            <i>S</i> = <i>&lambda;I</i>, so <b>w</b><sup>T</sup><i>S</i><b>w</b>
+            = <i>&lambda;</i> for every unit <b>w</b>, the curve is flat,
+            and every direction is an eigenvector.</details>
+        </li>
+        <li>Type an off-diagonal entry bigger than allowed, e.g.
+          <i>S</i> = [[1, 3], [3, 1]].
+          <details class="answer"><summary>Answer</summary>Its
+            eigenvalues are 4 and &minus;2, and a variance
+            <b>w</b><sup>T</sup><i>S</i><b>w</b> can't be negative, so no
+            data has this covariance. A covariance needs
+            |<i>S</i><sub>01</sub>| &le;
+            &radic;(<i>S</i><sub>00</sub><i>S</i><sub>11</sub>).</details>
+        </li>
+      </ul>
+      <ul class="try" data-show="faces">
+        <li>On Guess Who, press <em>Guess who?</em> and add components
+          one at a time. How many do you need?
+          <details class="answer"><summary>Answer</summary>Often only a
+            handful: hats, hair color and beards change many pixels, so they
+            land in the first few eigenfaces. The rebuild is recognizable
+            long before it is sharp.</details>
+        </li>
+        <li>On Guess Who, slide <i>k</i> to the end (23). Why is the
+          rebuild perfect? Then tick <em>hold out</em> and look at a held-out
+          face at the largest <i>k</i>.
+          <details class="answer"><summary>Answer</summary>24 centered
+            images span at most 23 dimensions, so there are only 23 nonzero
+            eigenvalues and every training face is exactly
+            <b>x&#772;</b> plus a mix of 23 eigenfaces. A held-out face is
+            not in that span: PCA can only rebuild what looks like its
+            training images, so it never becomes perfect.</details>
+        </li>
+        <li>Compare the kept-variance curves. Which set needs the most
+          components to keep 90%?
+          <details class="answer"><summary>Answer</summary>Cats, at 78 of
+            299 (Olivetti 66, emoji 44, Guess Who 16). Cats are photos
+            with any fur, pose and background; emoji share one yellow
+            circle, yet their first component keeps only about 15%, since
+            each emoji's eyes and mouth are its own.</details>
+        </li>
+        <li>In the mixer, push <i>c</i><sub>1</sub> to each end. What does
+          <b>w</b><sub>1</sub> change?
+          <details class="answer"><summary>Answer</summary>Whatever moves
+            the most pixels the most: lighting on Olivetti, the background
+            and fur brightness on cats, hair and hats on Guess Who. The top
+            direction is about variance, not about who the face
+            is.</details>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================== projection tab -->
+  <main class="panel" data-show="proj">
+    <div class="stage card">
+      <div class="stage-head">
+        <span class="key"><i class="dot pt"></i><span>samples
+          <b>x</b><sub><i>i</i></sub></span></span>
+        <span class="key"><i class="ln w"></i><span><b>w</b> and its line (drag
+          either)</span></span>
+        <span class="key"><i class="dot proj"></i><span><b>x&#770;</b><sub><i>i</i></sub></span></span>
+        <span class="key"><i class="ln err"></i><span>error
+          <b>e</b><sub><i>i</i></sub></span></span>
+        <span class="key" id="p-key-eig"><i class="ln eig"></i><span>&radic;<i>&lambda;<sub>j</sub></i> <b>v</b><sub><i>j</i></sub></span></span>
+        <span class="key" id="p-key-sw"><i class="ln sw"></i><span><i>S</i><b>w</b></span></span>
+      </div>
+      <svg id="p-plane" aria-label="samples, the line along w and their
+        projections"></svg>
+      <svg id="p-hist" class="chart" aria-label="histogram of the scores
+        c"></svg>
+      <p class="hint">Drag the tip of <b>w</b> or anywhere on its line. With
+        the axes shown, drag the tips of
+        &radic;<i>&lambda;<sub>j</sub></i><b>v</b><sub><i>j</i></sub> to
+        reshape the cloud.</p>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h2>Covariance <i>S</i></h2>
+        <div class="matrix-row">
+          <span class="mlabel"><i>S</i> =</span>
+          <div class="matrix">
+            <input id="s00" type="number" step="0.1" min="0" max="16"
+              aria-label="S00">
+            <input id="s01" type="number" step="0.1" aria-label="S01">
+            <input id="s10" type="number" step="0.1" aria-label="S10"
+              title="S is symmetric: this entry copies the one above">
+            <input id="s11" type="number" step="0.1" min="0" max="16"
+              aria-label="S11">
+          </div>
+          <span class="muted">symmetric: the two off-diagonal entries move
+            together</span>
+        </div>
+        <p class="warn" id="s-warn" hidden></p>
+        <h3>Presets</h3>
+        <div class="seg wrap" id="p-presets"></div>
+        <div class="buttons"><button id="p-resample">New samples</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Same <i>S</i>, by its eigenvalues and eigenvectors</h2>
+        <label class="slider"><span><i>&lambda;</i><sub>1</sub></span>
+          <span class="pair"><input type="range" id="l1r" min="0" max="16"
+            step="0.05"><input type="number" id="l1" min="0" max="16"
+            step="0.1"></span></label>
+        <label class="slider"><span><i>&lambda;</i><sub>2</sub></span>
+          <span class="pair"><input type="range" id="l2r" min="0" max="16"
+            step="0.05"><input type="number" id="l2" min="0" max="16"
+            step="0.1"></span></label>
+        <label class="slider"><span>angle of <b>v</b><sub>1</sub></span>
+          <span class="pair"><input type="range" id="thr" min="-90"
+            max="90" step="0.5"><input type="number" id="th" min="-90"
+            max="90" step="1"></span></label>
+        <div class="readout" id="eig-read"></div>
+        <p class="warn" id="eig-warn" hidden></p>
+        <div class="formula small"><i>S</i> =
+          <i>&lambda;</i><sub>1</sub><b>v</b><sub>1</sub><b>v</b><sub>1</sub><sup>T</sup>
+          + <i>&lambda;</i><sub>2</sub><b>v</b><sub>2</sub><b>v</b><sub>2</sub><sup>T</sup>,
+          &nbsp; <i>S</i><b>v</b><sub><i>j</i></sub> =
+          <i>&lambda;<sub>j</sub></i><b>v</b><sub><i>j</i></sub></div>
+        <label class="check"><input type="checkbox" id="p-eig"><span>draw the
+          axes &radic;<i>&lambda;<sub>j</sub></i><b>v</b><sub><i>j</i></sub>
+          and the 2-sd ellipse</span></label>
+      </div>
+
+      <div class="card readout">
+        <h3>Projection onto <b>w</b></h3>
+        <div id="p-read"></div>
+        <div class="kept" id="p-bar"></div>
+        <div class="buttons">
+          <button id="p-v1">w = v₁</button>
+          <button id="p-v2">w = v₂</button>
+          <button id="p-spin">Sweep w</button>
+        </div>
+        <label class="check"><input type="checkbox" id="p-err" checked><span>show errors <b>e</b><sub><i>i</i></sub></span></label>
+        <label class="check"><input type="checkbox" id="p-sw"><span>show
+          <i>S</i><b>w</b></span></label>
+      </div>
+
+      <div class="card">
+        <h3>Variance along every direction</h3>
+        <svg id="p-dial" class="chart pick" aria-label="variance of c
+          against the angle of w"></svg>
+        <p class="muted">Click or drag to set <b>w</b>'s angle. Kept plus
+          lost is tr <i>S</i> at every angle.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- =============================================== eigenfaces tab -->
+  <main class="panel" data-show="faces">
+    <div class="stage card plain">
+      <div class="stage-head">
+        <div class="seg" id="f-sets" role="radiogroup"></div>
+        <span class="muted" id="f-status"></span>
+      </div>
+      <div class="pics">
+        <figure><canvas id="f-orig"></canvas>
+          <figcaption id="f-orig-cap"></figcaption></figure>
+        <figure><canvas id="f-rec"></canvas>
+          <figcaption id="f-rec-cap"></figcaption></figure>
+      </div>
+      <label class="slider wide"><span><i>k</i> kept</span>
+        <input type="range" id="f-k" min="0" max="23" step="1">
+        <span class="val" id="f-kval"></span></label>
+      <svg id="f-curve" class="chart pick" aria-label="eigenvalues and the
+        kept fraction of variance against k"></svg>
+      <h3 class="gal-head">Pick an image <span class="muted"
+        id="f-gal-note"></span></h3>
+      <div class="gallery" id="f-gallery"></div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3>Fit</h3>
+        <label class="check"><input type="checkbox" id="f-held"><span>hold out
+          <span id="f-held-n"></span> images: PCA never sees them</span></label>
+        <p class="muted" id="f-credit"></p>
+      </div>
+
+      <div class="card">
+        <h3>Mean and top eigenfaces</h3>
+        <div class="eigs" id="f-eigs"></div>
+        <p class="muted">Gray is 0; light and dark are the two signs of
+          <b>w</b><sub><i>j</i></sub>, scaled per image. The percentage is
+          <i>&lambda;<sub>j</sub></i> / &sum;<i>&lambda;</i>.</p>
+      </div>
+
+      <div class="card">
+        <h3>Mixer: walk along <b>w</b><sub>1</sub> &hellip;
+          <b>w</b><sub>4</sub></h3>
+        <div class="mixer">
+          <canvas id="f-mix"></canvas>
+          <div class="controls" id="f-mix-sl"></div>
+        </div>
+        <div class="seg" id="f-mix-from" role="radiogroup">
+          <button data-v="mean" aria-checked="true">from x̄</button>
+          <button data-v="sel">from the picked image</button>
+        </div>
+        <div class="buttons"><button id="f-mix-reset">Reset to 0</button>
+        </div>
+        <p class="muted">Each slider adds <i>c<sub>j</sub></i><b>w</b><sub><i>j</i></sub>,
+          in steps of &radic;<i>&lambda;<sub>j</sub></i> (one standard
+          deviation of the scores <i>c<sub>j</sub></i>).</p>
+      </div>
+
+      <div class="card">
+        <h3>Guess who?</h3>
+        <p id="f-game-msg">A hidden image is rebuilt from a few components
+          at a time. Click its match in the gallery.</p>
+        <div class="buttons">
+          <button id="f-game-go">Start</button>
+          <button id="f-game-p1" hidden>+1 component</button>
+          <button id="f-game-p5" hidden>+5</button>
+          <button id="f-game-quit" hidden>Give up</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Part of the DS 4400 &ldquo;visually&rdquo; demos.
+    &middot;
+    <a href="https://github.com/matthigger/pca">Source on GitHub</a>
+    &middot;
+    <span id="build"></span>
+  </footer>
+
+  <script src="js/version.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/linalg.js"></script>
+  <script src="js/pca.js"></script>
+  <script src="js/projection.js"></script>
+  <script src="js/faces.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

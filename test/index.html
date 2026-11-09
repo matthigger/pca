@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PCA engine check</title>
+  <style>body { font: 14px/1.4 ui-monospace, monospace; margin: 16px; }</style>
+</head>
+<body>
+  <!-- Compares js/pca.js against sklearn (test/ref.js, made by
+       build/make_data.py) on every dataset, all images and held out. -->
+  <pre id="out">running</pre>
+  <script src="../js/linalg.js"></script>
+  <script src="../js/pca.js"></script>
+  <script src="ref.js"></script>
+  <script>
+    (async () => {
+      const out = document.getElementById("out");
+      const lines = [];
+      let bad = 0;
+      const rel = (a, b) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-12);
+      // The cat sprite is JPEG; browser and PIL decoders may differ by a
+      // grey level, so it gets a looser tolerance.
+      const TOL = { guesswho: 1e-6, olivetti: 1e-6, emoji: 1e-6,
+        cats: 2e-3 };
+      for (const key of DATA_KEYS) {
+        const m = await loadSet(key, "../js/data/");
+        for (const held of [false, true]) {
+          const t0 = performance.now();
+          const fit = await fitPca(m, trainIdx(m, held));
+          const ms = performance.now() - t0;
+          const r = REF[key][held ? "held" : "all"];
+          let worst = 0;
+          r.var.forEach((v, j) => { worst = Math.max(worst, rel(fit.lam[j], v)); });
+          const f10 = fit.lam.slice(0, 10).reduce((s, v) => s + v, 0) /
+            fit.total;
+          const xh = rebuild(fit, scores(fit, imageOf(m, 0)), 5);
+          const x0 = imageOf(m, 0);
+          let e = 0;
+          for (let k = 0; k < m.d; k++) e += (xh[k] - x0[k]) ** 2;
+          e /= m.d;
+          // Orthonormality of the first three directions.
+          let orth = 0;
+          for (let a = 0; a < 3; a++) for (let b = 0; b <= a; b++) {
+            const wa = direction(fit, a), wb = direction(fit, b);
+            let s = 0;
+            for (let k = 0; k < m.d; k++) s += wa[k] * wb[k];
+            orth = Math.max(orth, Math.abs(s - (a === b ? 1 : 0)));
+          }
+          const ok = worst < TOL[key] && rel(f10, r.frac10) < TOL[key] &&
+            fit.rank === r.rank && rel(e, r.err5) < 50 * TOL[key] &&
+            orth < 1e-9;
+          if (!ok) bad++;
+          lines.push(`${ok ? "PASS" : "FAIL"} ${key.padEnd(9)} ${
+            held ? "held" : "all "} n=${fit.mt} rank ${fit.rank}/${r.rank} ` +
+            `var relerr ${worst.toExponential(1)} frac10 ${f10.toFixed(5)}/${
+            r.frac10.toFixed(5)} err5 ${e.toExponential(3)}/${
+            r.err5.toExponential(3)} orth ${orth.toExponential(1)} ` +
+            `${ms.toFixed(0)} ms`);
+          out.textContent = lines.join("\n");
+        }
+      }
+      lines.push(bad ? `${bad} FAILED` : "ALL PASS");
+      out.textContent = lines.join("\n");
+      document.title = bad ? "FAIL" : "PASS";
+    })().catch(e => {
+      document.getElementById("out").textContent = "ERROR " + e.stack;
+    });
+  </script>
+</body>
+</html>
