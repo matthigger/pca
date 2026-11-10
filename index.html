@@ -35,13 +35,8 @@
         <b>x</b> &minus; <b>x&#770;</b> is at a right angle to <b>w</b>, so
         Pythagoras splits every sample's spread into a kept part and a lost
         part. Their sum is fixed by the data, so the least error is the
-        most variance (Pearson 1901; Hotelling 1933):</p>
+        most variance:</p>
       <div class="formula">
-        <span class="frac"><span>1</span><span><i>n</i></span></span>&sum;
-        <i>c<sub>i</sub></i><sup>2</sup> +
-        <span class="frac"><span>1</span><span><i>n</i></span></span>&sum;
-        ‖<b>e</b><sub><i>i</i></sub>‖<sup>2</sup> = tr <i>S</i>
-        <span class="implies">&rArr;</span>
         max<sub><b>w</b></sub> <b>w</b><sup>T</sup><i>S</i><b>w</b>
         &nbsp;subject to&nbsp; <b>w</b><sup>T</sup><b>w</b> = 1
       </div>
@@ -64,8 +59,7 @@
         eigenvectors of <i>S</i> (<i>d</i> &times; <i>d</i>), sorted by
         eigenvalue <i>&lambda;</i><sub>1</sub> &ge;
         <i>&lambda;</i><sub>2</sub> &ge; &hellip;; drawn as pictures they
-        are the eigenfaces (Sirovich &amp; Kirby 1987; Turk &amp; Pentland
-        1991).</p>
+        are the eigenfaces.</p>
       <div class="formula">
         <b>x&#770;</b> = <b>x&#772;</b> + <i>c</i><sub>1</sub><b>w</b><sub>1</sub>
         + &hellip; + <i>c<sub>k</sub></i><b>w</b><sub><i>k</i></sub>,
@@ -87,8 +81,9 @@
     <div>
       <h3>Try this</h3>
       <ul class="try" data-show="proj">
-        <li>Drag <b>w</b> around and watch the variance-by-direction
-          curve. Where is it highest, and how high?
+        <li>Drag <b>w</b> around (or press <em>Sweep w</em>) and watch
+          the histogram's spread and the kept variance. Where is it
+          highest, and how high?
           <details class="answer"><summary>Answer</summary>At
             <b>w</b> = <b>v</b><sub>1</sub>, the eigenvector of the larger
             eigenvalue, and the peak height is <i>&lambda;</i><sub>1</sub>.
@@ -116,8 +111,8 @@
           Which line is best now?
           <details class="answer"><summary>Answer</summary>All of them:
             <i>S</i> = <i>&lambda;I</i>, so <b>w</b><sup>T</sup><i>S</i><b>w</b>
-            = <i>&lambda;</i> for every unit <b>w</b>, the curve is flat,
-            and every direction is an eigenvector.</details>
+            = <i>&lambda;</i> for every unit <b>w</b>, every line keeps
+            the same, and every direction is an eigenvector.</details>
         </li>
         <li>Type an off-diagonal entry bigger than allowed, e.g.
           <i>S</i> = [[1, 3], [3, 1]].
@@ -176,6 +171,8 @@
         <span class="key"><i class="ln w"></i><span><b>w</b> and its line (drag
           either)</span></span>
         <span class="key"><i class="dot proj"></i><span><b>x&#770;</b><sub><i>i</i></sub></span></span>
+        <span class="key"><i class="dot hb"></i><span>histogram of the
+          scores <i>c<sub>i</sub></i>, beside the line</span></span>
         <span class="key"><i class="ln err"></i><span>error
           <b>e</b><sub><i>i</i></sub></span></span>
         <span class="key" id="p-key-eig"><i class="ln eig"></i><span>&radic;<i>&lambda;<sub>j</sub></i> <b>v</b><sub><i>j</i></sub></span></span>
@@ -183,8 +180,6 @@
       </div>
       <svg id="p-plane" aria-label="samples, the line along w and their
         projections"></svg>
-      <svg id="p-hist" class="chart" aria-label="histogram of the scores
-        c"></svg>
       <p class="hint">Drag the tip of <b>w</b> or anywhere on its line. With
         the axes shown, drag the tips of
         &radic;<i>&lambda;<sub>j</sub></i><b>v</b><sub><i>j</i></sub> to
@@ -253,14 +248,6 @@
         <label class="check"><input type="checkbox" id="p-err" checked><span>show errors <b>e</b><sub><i>i</i></sub></span></label>
         <label class="check"><input type="checkbox" id="p-sw"><span>show
           <i>S</i><b>w</b></span></label>
-      </div>
-
-      <div class="card">
-        <h3>Variance along every direction</h3>
-        <svg id="p-dial" class="chart pick" aria-label="variance of c
-          against the angle of w"></svg>
-        <p class="muted">Click or drag to set <b>w</b>'s angle. Kept plus
-          lost is tr <i>S</i> at every angle.</p>
       </div>
     </div>
   </main>

@@ -1,6 +1,6 @@
 // Projection tab: n samples whose covariance (with 1/n) is exactly the
 // S the student types, a draggable unit direction w, the scores
-// c_i = wᵀx_i, the rebuilds x̂_i = c_i w and the errors e_i = x_i − x̂_i.
+// c_i = wᵀx_i (histogrammed beside w's line), the rebuilds x̂_i = c_i w and the errors e_i = x_i − x̂_i.
 //
 // S can be edited as a matrix or as eigenvalues and an eigenvector angle,
 // S = λ₁v₁v₁ᵀ + λ₂v₂v₂ᵀ. The samples are fixed standard draws z_i,
@@ -30,6 +30,7 @@ const P = {
   z: null,
   show: { eig: false, err: true, sw: false },
   spin: null,
+  hside: 1,   // which side of w's line the histogram sits on: ±perp(w)
 };
 
 /** Seeded uniform [0, 1) generator (mulberry32). */
@@ -121,8 +122,6 @@ function sProblem(M) {
 // ------------------------------------------------------------- drawing
 
 const pPlane = document.getElementById("p-plane");
-const pHist = document.getElementById("p-hist");
-const pDial = document.getElementById("p-dial");
 pPlane.setAttribute("viewBox", `0 0 ${PLANE.w} ${PLANE.h}`);
 
 function planeRender() {
@@ -145,6 +144,7 @@ function planeRender() {
   const L = 12;
   s += segSvg(mul(w, -L), mul(w, L), `class="wline"`);
   s += segSvg(mul(w, -L), mul(w, L), `class="hit" data-h="line"`);
+  s += histSvg(X, w);
   const xh = X.map(x => mul(w, dot(w, x)));
   if (P.show.err) {
     X.forEach((x, i) => { s += segSvg(x, xh[i], `class="err"`); });
@@ -191,99 +191,45 @@ function planeRender() {
   return X;
 }
 
-const HIST = { w: 700, h: 184, top: 26, bot: 140 };
-pHist.setAttribute("viewBox", `0 0 ${HIST.w} ${HIST.h}`);
-
-/** Histogram of the scores c_i, binned on the plane's own x scale. */
-function histRender(c, v) {
+/**
+ * Histogram of the scores c_i, pulled off to the side of w's line: the
+ * bins run along w on a baseline parallel to it, just past the farthest
+ * sample on the less crowded side, and the bars grow away from the
+ * cloud. The offset is capped so the bars stay on the plot. The curve is
+ * the normal with the same variance wᵀSw.
+ */
+function histSvg(X, w) {
+  const c = X.map(x => dot(w, x)), v = dot(w, Sx(w)), H = 2.4;
+  const reach = sg => Math.max(0, ...X.map(x => sg * dot(perp(w), x))) + 0.6;
+  // Flip sides only for a clear gain, so the histogram doesn't flicker.
+  if (reach(-P.hside) < reach(P.hside) - 0.4) P.hside = -P.hside;
+  const n = mul(perp(w), P.hside);
+  const room = 7.7 / Math.max(Math.abs(n[0]), Math.abs(n[1])) - H;
+  const off = Math.min(reach(P.hside), room);
   const bw = 0.5, lo = PLANE.dom[0], nb = (PLANE.dom[1] - lo) / bw;
   const cnt = new Array(nb).fill(0);
   for (const ci of c) cnt[clamp(Math.floor((ci - lo) / bw), 0, nb - 1)]++;
   const pdf = t => v > 1e-9 ?
     PN * bw * Math.exp(-t * t / (2 * v)) / Math.sqrt(2 * Math.PI * v) : 0;
-  const ymax = Math.max(10, ...cnt, Math.min(pdf(0), PN) * 1.05);
-  const sy = n => HIST.bot - n / ymax * (HIST.bot - HIST.top);
-  let s = `<line class="grid zero" x1="${PLANE.x0}" x2="${PLANE.x1}"
-    y1="${HIST.bot}" y2="${HIST.bot}"/>`;
-  cnt.forEach((n, b) => {
-    if (!n) return;
-    const x0 = S.sx(lo + b * bw);
-    s += `<rect class="bar" x="${x0 + 0.5}" width="${bw * S.k - 1}"
-      y="${sy(n)}" height="${HIST.bot - sy(n)}"/>`;
+  const hk = H / Math.max(8, ...cnt, Math.min(pdf(0), PN));
+  const at = (t, h) => add(mul(w, t), mul(n, off + h));
+  const ext = Math.min(Math.max(...c.map(Math.abs), 3 * Math.sqrt(v)) + 0.6,
+    PLANE.dom[1]);
+  let s = segSvg(at(-ext, 0), at(ext, 0), `class="hbase"`);
+  cnt.forEach((k, b) => {
+    if (!k) return;
+    const t0 = lo + b * bw, t1 = t0 + bw, h = k * hk;
+    s += `<polygon class="hbar" points="${[at(t0, 0), at(t1, 0), at(t1, h),
+      at(t0, h)].map(px).join(" ")}"/>`;
   });
   if (v > 1e-9) {
     let d = "";
-    for (let t = lo; t <= PLANE.dom[1] + 1e-9; t += 0.1) {
-      d += `${d ? "L" : "M"}${S.sx(t).toFixed(1)},${sy(Math.min(pdf(t),
-        ymax)).toFixed(1)}`;
+    for (let t = -ext; t <= ext + 1e-9; t += 0.1) {
+      d += `${d ? "L" : "M"}${px(at(t, Math.min(pdf(t), PN) * hk))}`;
     }
     s += `<path class="curve" d="${d}"/>`;
   }
-  for (let t = lo; t <= PLANE.dom[1]; t += 2) {
-    s += `<text class="tick" x="${S.sx(t)}" y="${HIST.bot + 15}"
-      text-anchor="middle">${fmt(t, 0)}</text>`;
-  }
-  s += `<text class="axis-label sm" x="${(PLANE.x0 + PLANE.x1) / 2}"
-    y="${HIST.bot + 30}" text-anchor="middle">score <tspan class="sym"
-    >c</tspan> = <tspan class="vec">w</tspan>ᵀ(<tspan class="vec">x</tspan>
-    − <tspan class="vec">x̄</tspan>), the position along <tspan
-    class="vec">w</tspan>'s line</text>
-    <text class="axis-label sm" x="${PLANE.x0}" y="16">histogram of the
-    ${PN} scores; curve: normal with variance ${fmt(v)}</text>`;
-  pHist.innerHTML = s;
-}
-
-const DIAL = { w: 440, h: 236, x0: 44, x1: 428, y0: 14, y1: 196 };
-pDial.setAttribute("viewBox", `0 0 ${DIAL.w} ${DIAL.h}`);
-const dsx = a => DIAL.x0 + a / 180 * (DIAL.x1 - DIAL.x0);
-
-/** wᵀSw (kept), tr S − wᵀSw (lost) and tr S against the angle of w. */
-function dialRender() {
-  const tr = P.S.a + P.S.d, top = Math.max(tr, 0.1) * 1.12;
-  const sy = v => DIAL.y1 - v / top * (DIAL.y1 - DIAL.y0);
-  const f = a => { const w = unit(a * DEG); return dot(w, Sx(w)); };
-  let kept = "", lost = "";
-  for (let a = 0; a <= 180; a += 2) {
-    const k = f(a);
-    kept += `${a ? "L" : "M"}${dsx(a).toFixed(1)},${sy(k).toFixed(1)}`;
-    lost += `${a ? "L" : "M"}${dsx(a).toFixed(1)},${sy(tr - k).toFixed(1)}`;
-  }
-  let s = "";
-  for (let a = 0; a <= 180; a += 45) {
-    s += `<line class="grid" x1="${dsx(a)}" x2="${dsx(a)}" y1="${DIAL.y0}"
-      y2="${DIAL.y1}"/><text class="tick" x="${dsx(a)}" y="${DIAL.y1 + 15}"
-      text-anchor="middle">${a}°</text>`;
-  }
-  const step = top > 12 ? 4 : top > 6 ? 2 : top > 2.4 ? 1 : 0.5;
-  for (let v = 0; v <= top; v += step) {
-    s += `<line class="grid${v ? "" : " zero"}" x1="${DIAL.x0}"
-      x2="${DIAL.x1}" y1="${sy(v)}" y2="${sy(v)}"/><text class="tick"
-      x="${DIAL.x0 - 6}" y="${sy(v) + 4}" text-anchor="end">${fmt(v,
-      step < 1 ? 1 : 0)}</text>`;
-  }
-  s += `<line class="total" x1="${DIAL.x0}" x2="${DIAL.x1}" y1="${sy(tr)}"
-    y2="${sy(tr)}"/><text class="zl" x="${DIAL.x1}" y="${sy(tr) - 5}"
-    text-anchor="end">tr S = ${fmt(tr)}</text>
-    <path class="c-lost" d="${lost}"/><path class="c-kept" d="${kept}"/>`;
-  const e = eigOfS();
-  const a1 = ((e.th / DEG) % 180 + 180) % 180, a2 = (a1 + 90) % 180;
-  if (Math.abs(e.l1 - e.l2) > 1e-6) {
-    s += `<circle class="eigdot" cx="${dsx(a1)}" cy="${sy(e.l1)}" r="5"/>
-      <text class="zl green" x="${dsx(a1)}" y="${sy(e.l1) - 9}"
-      text-anchor="middle">λ₁ at v₁</text>
-      <circle class="eigdot" cx="${dsx(a2)}" cy="${sy(e.l2)}" r="5"/>
-      <text class="zl green" x="${dsx(a2)}" y="${sy(e.l2) - 9}"
-      text-anchor="middle">λ₂ at v₂</text>`;
-  }
-  const a = ((P.phi / DEG) % 180 + 180) % 180, k = f(a);
-  s += `<line class="c-now" x1="${dsx(a)}" x2="${dsx(a)}" y1="${DIAL.y0}"
-    y2="${DIAL.y1}"/><circle class="kdot" cx="${dsx(a)}" cy="${sy(k)}"
-    r="5"/><circle class="ldot" cx="${dsx(a)}" cy="${sy(tr - k)}" r="4"/>
-    <text class="axis-label sm" x="${(DIAL.x0 + DIAL.x1) / 2}"
-    y="${DIAL.y1 + 32}" text-anchor="middle">angle of <tspan class="vec"
-    >w</tspan>; <tspan class="kept-t">kept wᵀSw</tspan>, <tspan
-    class="lost-t">lost tr S − wᵀSw</tspan></text>`;
-  pDial.innerHTML = s;
+  return s;
 }
 
 // ------------------------------------------------------------ readouts
@@ -374,10 +320,7 @@ function readRender(X) {
 
 function projRender() {
   const X = planeRender();
-  const c = readRender(X);
-  const w = unit(P.phi);
-  histRender(c, dot(w, Sx(w)));
-  dialRender();
+  readRender(X);
   fieldsRender();
   document.getElementById("p-key-eig").hidden = !P.show.eig;
   document.getElementById("p-key-sw").hidden = !P.show.sw;
@@ -520,14 +463,6 @@ dragOn(pPlane, {
       commitEig();
     }
     pDrag = null;
-  },
-});
-
-dragOn(pDial, {
-  down(h, q) { stopSpin(); this.move(q); return true; },
-  move(q) {
-    P.phi = clamp((q.x - DIAL.x0) / (DIAL.x1 - DIAL.x0), 0, 1) * 180 * DEG;
-    projRender();
   },
 });
 

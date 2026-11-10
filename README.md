@@ -12,9 +12,9 @@ principal directions **w**ⱼ in the eigenfaces tab). Two tabs:
   exactly the S on screen. Edit S as a matrix (rejected with a reason if
   it is not a covariance) or as λ₁, λ₂ and the angle of **v**₁; the cloud
   reshapes either way. Drag **w** (or its line) and see the rebuilds, the
-  errors, the histogram of scores, and the kept / lost variance, which
-  always sum to tr S. The variance-by-direction curve peaks at λ₁ on
-  **v**₁. Optional overlays: the axes √λⱼ**v**ⱼ with their 2-sd ellipse
+  errors, the histogram of scores (drawn beside the line, as in
+  textbooks), and the kept / lost variance, which always sum to tr S.
+  Optional overlays: the axes √λⱼ**v**ⱼ with their 2-sd ellipse
   (drag their tips to edit S) and the vector S**w**, parallel to **w**
   only on an eigenvector.
 - **Eigenfaces.** Four image sets: Guess Who (24), Olivetti faces (400),
