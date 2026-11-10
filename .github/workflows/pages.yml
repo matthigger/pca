@@ -28,6 +28,12 @@ jobs:
         run: |
           printf 'const BUILD = { sha: "%s", time: "%s" };\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > js/version.js
+      # Pages caches files for 10 min; tagging each script and stylesheet
+      # with the commit keeps a fresh index.html from running stale JS.
+      - name: Cache-bust assets
+        run: |
+          sed -i -E "s#(src=\"js/[a-z]+\.js|href=\"style\.css)\"#\1?v=${GITHUB_SHA::7}\"#" index.html
+          grep -n '?v=' index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
