@@ -14,11 +14,12 @@ Sets (sources need no network except cats, see fetch_cats.py):
     olivetti: sklearn's Olivetti faces (cached), 400 x 64 x 64 gray
     emoji: Noto Color Emoji smiley faces rendered from the system font,
         64 x 64 RGB on white
-    cats: AFHQ cats (Choi et al. 2020), 64 x 64 RGB
+    cats: AFHQ cats (Choi et al. 2020), 64 x 64 RGB, then one dog
+        (build/dog.jpg) as the last image
 
 Run (from the repo root):
     ~/venv_ds4400/bin/python -I build/make_data.py --cats <dir> \\
-        --guesswho <dir>
+        --guesswho <dir> --dog build/dog.jpg
 """
 import argparse
 import base64
@@ -112,16 +113,21 @@ def emoji() -> dict:
                 holdout=every_kth(len(imgs), 10, 5))
 
 
-def cats(src: pathlib.Path) -> dict:
-    """Load the cat faces saved by fetch_cats.py.
+def cats(src: pathlib.Path, dog: pathlib.Path) -> dict:
+    """Load the cat faces saved by fetch_cats.py, plus one dog last.
+
+    The dog photo is resized whole (not eye-aligned to the cats): its face
+    fills the frame, so aligning it would need padding past the photo.
 
     Returns:
         dict: {imgs, labels, holdout}, imgs (np.array) (n, 64, 64, 3) uint8
     """
     files = sorted(src.glob("cat_*.jpg"))
-    imgs = np.stack([np.asarray(Image.open(f).convert("RGB"))
-                     for f in files])
-    labels = [f"cat {i + 1}" for i in range(len(files))]
+    imgs = [np.asarray(Image.open(f).convert("RGB")) for f in files]
+    imgs.append(np.asarray(Image.open(dog).convert("RGB")
+                           .resize((64, 64), Image.LANCZOS)))
+    imgs = np.stack(imgs)
+    labels = [f"cat {i + 1}" for i in range(len(files))] + ["a dog"]
     return dict(imgs=imgs, labels=labels,
                 holdout=every_kth(len(imgs), 10, 9))
 
@@ -194,18 +200,19 @@ CREDITS = {
                 "Harter 1994), via scikit-learn.",
     "emoji": "Noto Color Emoji, Google (SIL Open Font License 1.1).",
     "cats": "AFHQ cats (Choi et al. 2020), CC BY-NC 4.0, from the 64-pixel "
-            "copy zzsi/afhq64_16k.",
+            "copy zzsi/afhq64_16k; plus one dog, the author's own.",
 }
 TITLES = {"guesswho": "Guess Who", "olivetti": "Olivetti faces",
           "emoji": "Emoji", "cats": "Cats"}
 
 
-def main(cats_dir: pathlib.Path, gw_dir: pathlib.Path) -> None:
+def main(cats_dir: pathlib.Path, gw_dir: pathlib.Path,
+         dog: pathlib.Path) -> None:
     """Write js/data/<key>.js for every set and test/ref.js."""
     sets = {"guesswho": (guesswho(gw_dir), "png"),
             "olivetti": (olivetti(), "png"),
             "emoji": (emoji(), "png"),
-            "cats": (cats(cats_dir), "jpeg")}
+            "cats": (cats(cats_dir, dog), "jpeg")}
     ref = {}
     for key, (d, fmt) in sets.items():
         imgs = d["imgs"]
@@ -230,5 +237,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cats", type=pathlib.Path, required=True)
     ap.add_argument("--guesswho", type=pathlib.Path, required=True)
+    ap.add_argument("--dog", type=pathlib.Path,
+                    default=ROOT / "build" / "dog.jpg")
     a = ap.parse_args()
-    main(a.cats, a.guesswho)
+    main(a.cats, a.guesswho, a.dog)

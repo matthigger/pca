@@ -18,7 +18,7 @@ principal directions **w**ⱼ in the eigenfaces tab). Two tabs:
   (drag their tips to edit S) and the vector S**w**, parallel to **w**
   only on an eigenvector.
 - **Eigenfaces.** Four image sets: Guess Who (24), Olivetti faces (400),
-  Noto emoji smileys (101), AFHQ cats (300). Rebuild a picked image from
+  Noto emoji smileys (101), AFHQ cats (300, plus one dog last). Rebuild a picked image from
   its top k components; the eigenvalue bars and their running sum (the
   kept fraction) sit on one k axis. The mean and top 8 eigenfaces, a mixer
   that walks along **w**₁…**w**₄ in units of √λⱼ, a hold-out toggle (PCA
